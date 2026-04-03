@@ -1,9 +1,10 @@
 package com.example.paper.service;
 
 import com.example.paper.config.AppProperties;
-import com.example.paper.util.CategoryConstants;
+import com.example.paper.exception.ApiException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -37,47 +38,74 @@ public class LLMService {
         this.appProperties = appProperties;
     }
 
-    public List<String> classify(String content) {
+    public List<String> classify(String content, List<String> candidateCategories) {
         if (content == null) {
             return Collections.emptyList();
+        }
+        if (candidateCategories == null || candidateCategories.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "未配置分类，无法执行 LLM 分类。请先添加分类。");
         }
 
         String apiKey = appProperties.getLlm().getApiKey();
         String endpoint = appProperties.getLlm().getEndpoint();
 
         if (apiKey == null || apiKey.isBlank() || endpoint == null || endpoint.isBlank()) {
-            // 没配置 LLM 时用关键词兜底，保证流程可跑通
-            return keywordFallback(content);
+            throw new ApiException(HttpStatus.BAD_REQUEST, "LLM API Key 未配置，请先在 application.yml 中完善 app.llm.api-key。");
         }
 
-        String prompt = buildPrompt(content);
+        String prompt = buildPrompt(content, candidateCategories);
         try {
             String responseBody = callDashScope(prompt, apiKey, endpoint);
-            return parseCategories(responseBody);
+            List<String> parsed = parseCategories(responseBody, candidateCategories);
+            if (parsed.isEmpty()) {
+                throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM 分类结果为空，请检查提示词或模型返回格式。");
+            }
+            return parsed;
+        } catch (ApiException e) {
+            throw e;
         } catch (Exception e) {
-            // 调用失败时不要让上传流程完全不可用
-            return keywordFallback(content);
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM 分类调用失败：" + e.getMessage());
         }
     }
 
     private String callDashScope(String prompt, String apiKey, String endpoint) throws IOException, InterruptedException {
-        // DashScope / Qwen-plus 常见 body 形态（如果你的 endpoint 不匹配，可在 config 里改 endpoint）
-        // 注意：不同厂商可能在 headers/请求体字段上有差异，这里做“尽量兼容”的实现
-        var root = objectMapper.createObjectNode();
-        root.put("model", appProperties.getLlm().getModel());
+        String targetUrl = endpoint;
+        String body;
 
-        var input = objectMapper.createObjectNode();
-        input.put("prompt", prompt);
-        root.set("input", input);
+        // 兼容 OpenAI-compatible 模式：
+        // endpoint = https://dashscope.aliyuncs.com/compatible-mode/v1
+        // 实际调用路径应为 /chat/completions
+        if (isCompatibleMode(endpoint)) {
+            if (!targetUrl.endsWith("/chat/completions")) {
+                targetUrl = trimTrailingSlash(targetUrl) + "/chat/completions";
+            }
 
-        var params = objectMapper.createObjectNode();
-        params.put("result_format", appProperties.getLlm().getResponseFormat());
-        root.set("parameters", params);
+            var root = objectMapper.createObjectNode();
+            root.put("model", appProperties.getLlm().getModel());
+            var messages = objectMapper.createArrayNode();
+            messages.add(objectMapper.createObjectNode()
+                    .put("role", "user")
+                    .put("content", prompt));
+            root.set("messages", messages);
+            root.put("temperature", 0.1);
+            body = root.toString();
+        } else {
+            // DashScope 原生 generation 形态
+            var root = objectMapper.createObjectNode();
+            root.put("model", appProperties.getLlm().getModel());
 
-        String body = root.toString();
+            var input = objectMapper.createObjectNode();
+            input.put("prompt", prompt);
+            root.set("input", input);
+
+            var params = objectMapper.createObjectNode();
+            params.put("result_format", appProperties.getLlm().getResponseFormat());
+            root.set("parameters", params);
+            body = root.toString();
+        }
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpoint))
+                .uri(URI.create(targetUrl))
                 .timeout(Duration.ofSeconds(30))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -86,48 +114,31 @@ public class LLMService {
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("LLM call failed, status=" + response.statusCode());
+            String brief = response.body() == null ? "" : response.body();
+            if (brief.length() > 180) {
+                brief = brief.substring(0, 180) + "...";
+            }
+            if (response.statusCode() == 401 || response.statusCode() == 403) {
+                throw new ApiException(HttpStatus.BAD_REQUEST, "LLM API Key 无效或权限不足，请更新 app.llm.api-key。response=" + brief);
+            }
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM call failed, status=" + response.statusCode() + ", response=" + brief);
         }
         return response.body();
     }
 
-    private List<String> keywordFallback(String content) {
-        String c = content.toLowerCase();
-        Set<String> hits = new HashSet<>();
-
-        boolean cf = c.contains("collaborative") || c.contains("matrix factorization") || c.contains("user-item") || c.contains("item-based")
-                || c.contains("cf-based") || c.contains("recommendation") && c.contains("filter");
-        boolean graph = c.contains("graph") || c.contains("gnn") || c.contains("node") || c.contains("edge") || c.contains("message passing");
-        boolean context = c.contains("context") || c.contains("session") || c.contains("sequence") || c.contains("time-aware") || c.contains("situation");
-
-        if (cf) hits.add("CF Based");
-        if (graph) hits.add("Graph Based");
-        if (context) hits.add("Context Based");
-
-        if (hits.size() >= 2) {
-            hits.add("Hybrid Based");
+    private String buildPrompt(String content, List<String> candidateCategories) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是推荐系统领域专家，请根据论文内容判断其属于以下哪些类别（可以多选）：\n");
+        for (int i = 0; i < candidateCategories.size(); i++) {
+            sb.append(i + 1).append(". ").append(candidateCategories.get(i)).append("\n");
         }
-        if (hits.isEmpty()) {
-            hits.add("LLM Based");
-        }
-        // Hybrid Based 如果是由 hits.size()>=2 触发也属于正常多标签
-        return new ArrayList<>(hits);
+        sb.append("\n返回格式（只能返回 JSON 数组，不要添加解释）：\n");
+        sb.append("[\"").append(candidateCategories.get(0)).append("\"]\n\n");
+        sb.append("论文内容如下：\n").append(content);
+        return sb.toString();
     }
 
-    private String buildPrompt(String content) {
-        return "你是推荐系统领域专家，请根据论文内容判断其属于以下哪些类别（可以多选）：\n" +
-                "1. CF Based\n" +
-                "2. Graph Based\n" +
-                "3. Context Based\n" +
-                "4. Hybrid Based\n" +
-                "5. LLM Based\n\n" +
-                "返回格式：\n" +
-                "[\"CF Based\", \"Graph Based\"]\n\n" +
-                "论文内容如下：\n" +
-                content;
-    }
-
-    private List<String> parseCategories(String responseBody) {
+    private List<String> parseCategories(String responseBody, List<String> candidateCategories) {
         if (responseBody == null || responseBody.isBlank()) {
             return Collections.emptyList();
         }
@@ -145,21 +156,18 @@ public class LLMService {
             String arr = m.group();
             try {
                 List<String> parsed = objectMapper.readValue(arr, objectMapper.getTypeFactory().constructCollectionType(List.class, String.class));
-                return normalize(parsed);
+                return normalize(parsed, candidateCategories);
             } catch (Exception ignored) {
                 // fallthrough
             }
         }
 
-        // 兜底：直接匹配固定枚举名出现情况
+        // 兜底：直接匹配候选类别名出现情况
         Set<String> results = new HashSet<>();
-        for (String c : CategoryConstants.DEFAULT_CATEGORIES) {
+        for (String c : candidateCategories) {
             if (text.contains(c)) {
                 results.add(c);
             }
-        }
-        if (results.isEmpty()) {
-            results.add("LLM Based");
         }
         return new ArrayList<>(results);
     }
@@ -191,11 +199,11 @@ public class LLMService {
         return null;
     }
 
-    private List<String> normalize(List<String> parsed) {
+    private List<String> normalize(List<String> parsed, List<String> candidateCategories) {
         if (parsed == null) {
             return Collections.emptyList();
         }
-        Set<String> allowed = new HashSet<>(CategoryConstants.DEFAULT_CATEGORIES);
+        Set<String> allowed = new HashSet<>(candidateCategories);
         List<String> out = new ArrayList<>();
         for (String s : parsed) {
             if (s != null) {
@@ -205,9 +213,19 @@ public class LLMService {
                 }
             }
         }
-        if (out.isEmpty()) {
-            out.add("LLM Based");
-        }
+        return out;
+    }
+
+    private boolean isCompatibleMode(String endpoint) {
+        if (endpoint == null) return false;
+        String e = endpoint.toLowerCase();
+        return e.contains("/compatible-mode/") || e.endsWith("/v1") || e.contains("/v1/");
+    }
+
+    private String trimTrailingSlash(String s) {
+        if (s == null) return "";
+        String out = s;
+        while (out.endsWith("/")) out = out.substring(0, out.length() - 1);
         return out;
     }
 }

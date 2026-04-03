@@ -9,7 +9,6 @@ import com.example.paper.entity.PaperCategory;
 import com.example.paper.exception.ResourceNotFoundException;
 import com.example.paper.repository.CategoryRepository;
 import com.example.paper.repository.PaperRepository;
-import com.example.paper.util.CategoryConstants;
 import com.example.paper.util.PdfParserUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -52,8 +51,19 @@ public class PaperService {
         String title = deriveTitle(file.getOriginalFilename());
         byte[] pdfBytes = file.getBytes();
         String text = pdfParserUtil.extractAbstractAndIntroduction(pdfBytes);
-        List<String> categories = llmService.classify(text);
+        List<String> candidateCategories = categoryRepository.findAll().stream()
+                .map(Category::getName)
+                .filter(n -> n != null && !n.trim().isEmpty())
+                .toList();
+        if (candidateCategories.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "当前没有可用分类，请先添加分类后再上传论文。");
+        }
+
+        List<String> categories = llmService.classify(text, candidateCategories);
         categories = normalizeCategories(categories);
+        if (categories.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM 未返回有效分类，请检查模型配置与返回格式。");
+        }
 
         String storedFilePath = fileService.uploadBytes(pdfBytes, file.getOriginalFilename());
 
@@ -168,19 +178,15 @@ public class PaperService {
         if (categories == null) {
             return List.of();
         }
-        Set<String> allowed = new HashSet<>(CategoryConstants.DEFAULT_CATEGORIES);
         List<String> out = new ArrayList<>();
         for (String c : categories) {
             if (c == null) continue;
             String t = c.trim();
-            if (allowed.contains(t)) {
+            if (!t.isEmpty() && categoryRepository.existsByName(t)) {
                 out.add(t);
             }
         }
-        // 保证至少有一个类别（便于前端渲染）
-        if (out.isEmpty()) {
-            out.add("LLM Based");
-        }
+
         return out;
     }
 }

@@ -8,9 +8,18 @@
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 16px; background: #f6f7fb; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+    body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; background: #f6f7fb; }
+    .container { max-width: 1280px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 16px rgba(38, 61, 117, .08);
+      border: 1px solid #edf2ff;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(38, 61, 117, .12); }
     .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
     input[type="text"], input[type="password"], select { padding: 8px; border-radius: 6px; border: 1px solid #d9d9d9; }
     button { padding: 8px 12px; border-radius: 6px; border: 1px solid #d9d9d9; background: #fff; cursor: pointer; }
@@ -19,6 +28,132 @@
     .muted { color: #666; font-size: 12px; }
     .groups { display: flex; flex-direction: column; gap: 14px; }
     .group-title { font-weight: 700; margin-bottom: 8px; font-size: 16px; }
+    .category-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .category-head .group-title { margin-bottom: 0; }
+    .btn-mini {
+      height: 28px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(47,111,237,.22);
+      background: rgba(47,111,237,.06);
+      color: #2f6fed;
+    }
+    .btn-mini:hover { background: rgba(47,111,237,.10); }
+    .btn-mini-danger {
+      border: 1px solid rgba(239, 68, 68, .25);
+      background: rgba(239, 68, 68, .08);
+      color: #ef4444;
+    }
+    .btn-mini-danger:hover { background: rgba(239, 68, 68, .12); }
+    .btn-mini[disabled] { opacity: .55; cursor: not-allowed; }
+
+    .btn-upload {
+      background: linear-gradient(135deg, #2f6fed, #4f8cff);
+      border-color: transparent !important;
+      color: #fff;
+    }
+    .btn-upload:hover { filter: saturate(1.05); }
+    .btn-addcat {
+      background: linear-gradient(135deg, #30ad0a9a, #48fa02f6) !important;
+      border-color: transparent !important;
+      color: #fff !important;
+    }
+    .btn-addcat:hover { filter: saturate(1.05); }
+    .toolbar-btn {
+      height: 42px;
+      min-width: 108px;
+      padding: 0 14px !important;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .btn-search {
+      background: #8568eefa;
+      border: 1px solid #d0d5dd;
+      color: #f3f3f3;
+    }
+    .btn-logout {
+      background: #f35e5ee8;
+      border: 1px solid #d0d5dd;
+      color: hsl(216, 12%, 92%);
+    }
+    .toolbar-control {
+      height: 42px;
+      width: 100%;
+      border-radius: 10px !important;
+      border: 1px solid #d0d5dd !important;
+      padding: 0 12px !important;
+      font-size: 14px;
+      background: rgba(255,255,255,.9);
+      color: #344054;
+      box-sizing: border-box;
+      transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+    }
+    .toolbar-control:focus {
+      outline: none;
+      border-color: #2f6fed !important;
+      box-shadow: 0 0 0 4px rgba(47,111,237,.12);
+      background: #fff;
+    }
+    .toolbar-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .search-strip {
+      border: 1px solid #dbe3f4;
+      background: rgba(255,255,255,.72);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: end;
+      flex-wrap: wrap;
+    }
+    .search-strip .toolbar-block .muted {
+      font-size: 11px;
+      color: #667085;
+    }
+    .search-btn-wrap {
+      display: flex;
+      align-items: end;
+      height: 100%;
+    }
+    .category-card {
+      position: relative;
+      overflow: hidden;
+    }
+    .category-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 2px;
+      width: 100%;
+      background: var(--accent, #2f6fed);
+      opacity: .95;
+    }
+    .category-card::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 44px;
+      width: 100%;
+      background: linear-gradient(180deg, color-mix(in srgb, var(--accent, #2f6fed) 16%, transparent) 0%, transparent 80%);
+      pointer-events: none;
+    }
     .paper-line {
       display: grid;
       grid-template-columns: minmax(260px, 1.1fr) minmax(280px, 1fr) auto;
@@ -29,7 +164,9 @@
       border-radius: 8px;
       margin-bottom: 8px;
       background: #fafafa;
+      transition: background .15s ease, border-color .15s ease;
     }
+    .paper-line:hover { background: #f4f7ff; border-color: #dbe6ff; }
     .paper-meta { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
     .code-col { min-width: 0; }
     .code-link {
@@ -120,6 +257,12 @@
       background: linear-gradient(135deg, #2f6fed, #4f8cff);
       color: #fff; display: flex; align-items: center; justify-content: center;
       font-weight: bold; font-size: 14px;
+      animation: pulse 2.2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(47,111,237,.35); }
+      70% { box-shadow: 0 0 0 10px rgba(47,111,237,0); }
+      100% { box-shadow: 0 0 0 0 rgba(47,111,237,0); }
     }
     .login-title { font-size: 24px; font-weight: 700; margin: 0; color: #1f2a44; }
     .login-subtitle { margin: 4px 0 0; color: #667085; font-size: 13px; }
@@ -137,7 +280,9 @@
     .login-btn {
       width: 100%; margin-top: 16px; height: 42px; border-radius: 10px; border: 0;
       background: linear-gradient(135deg, #2f6fed, #4f8cff); color: #fff; font-weight: 600; cursor: pointer;
+      transition: transform .12s ease, filter .12s ease;
     }
+    .login-btn:hover { transform: translateY(-1px); filter: saturate(1.08); }
     .login-btn[disabled] { opacity: .6; cursor: not-allowed; }
     .login-hint {
       margin-top: 12px; font-size: 12px; color: #667085; background: #f8fafc;
@@ -147,6 +292,47 @@
       margin-top: 12px; color: #b42318; background: #fef3f2; border: 1px solid #fecdca;
       border-radius: 8px; padding: 10px; font-size: 13px;
     }
+    .toast-wrap {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      min-width: 240px;
+      max-width: 420px;
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 13px;
+      box-shadow: 0 10px 24px rgba(17, 24, 39, .18);
+      animation: slideIn .22s ease;
+    }
+    .toast.success { background: linear-gradient(135deg, #22c55e, #16a34a); }
+    .toast.error { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .toast.info { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px) translateX(14px); }
+      to { opacity: 1; transform: translateY(0) translateX(0); }
+    }
+    .dashboard-wrap {
+      min-height: 100vh;
+      padding: 12px 16px 20px;
+      background:
+        radial-gradient(900px 340px at -10% -5%, rgba(47,111,237,.18), transparent 58%),
+        radial-gradient(700px 300px at 110% 20%, rgba(16,185,129,.16), transparent 55%),
+        linear-gradient(180deg, #f7f9ff 0%, #f4f7fb 40%, #f7faff 100%);
+    }
+    .dashboard-wrap .card {
+      background: rgba(255, 255, 255, .68) !important;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, .35);
+      box-shadow: 0 6px 16px rgba(38, 61, 117, .05);
+    }
   </style>
 </head>
 <body>
@@ -155,7 +341,7 @@
 <script type="text/babel">
   const { useEffect, useMemo, useState } = React;
 
-  const CATEGORY_LIST = ["CF Based", "Graph Based", "Context Based", "Hybrid Based", "LLM Based"];
+  const DEFAULT_CATEGORY_LIST = ["CF Based", "Graph Based", "Context Based", "Hybrid Based", "LLM Based"];
   const apiBase = window.location.origin; // 后端与前端同源（静态页面由后端托管）
   const LS_LAST_USERNAME = "paper_system_last_username";
 
@@ -196,10 +382,23 @@
     const [loggedIn, setLoggedIn] = useState(false);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
+    const [toasts, setToasts] = useState([]);
 
     const [papers, setPapers] = useState([]);
     const [keyword, setKeyword] = useState("");
     const [category, setCategory] = useState("全部");
+    const [categoryList, setCategoryList] = useState(DEFAULT_CATEGORY_LIST.map((n, idx) => ({ id: -(idx + 1), name: n, theme_color: "" })));
+
+    const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [newCategoryColor, setNewCategoryColor] = useState("#2f6fed");
+    const [addingCategory, setAddingCategory] = useState(false);
+
+    const [editCategoryModalOpen, setEditCategoryModalOpen] = useState(false);
+    const [editCategoryId, setEditCategoryId] = useState(null);
+    const [editCategoryName, setEditCategoryName] = useState("");
+    const [editCategoryColor, setEditCategoryColor] = useState("#2f6fed");
+    const [updatingCategory, setUpdatingCategory] = useState(false);
 
     const [file, setFile] = useState(null);
     const [uploadCodeUrl, setUploadCodeUrl] = useState("");
@@ -210,11 +409,162 @@
 
     const filteredCategory = category === "全部" ? "" : category;
 
+    function hashToHue(str) {
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = (h * 31 + str.charCodeAt(i)) >>> 0;
+      }
+      return h % 360;
+    }
+
+    function categoryAccent(categoryName) {
+      const fixed = {
+        "CF Based": "#2f6fed",
+        "Graph Based": "#8b5cf6",
+        "Context Based": "#f59e0b",
+        "Hybrid Based": "#10b981",
+        "LLM Based": "#ef4444",
+      };
+      if (fixed[categoryName]) return fixed[categoryName];
+      const hue = hashToHue(categoryName || "");
+      return `hsl(${hue} 78% 52%)`;
+    }
+
+    const categoryColorByName = useMemo(() => {
+      const m = new Map();
+      for (const c of categoryList) {
+        if (c && c.name) {
+          m.set(c.name, c.theme_color || "");
+        }
+      }
+      return m;
+    }, [categoryList]);
+
+    function categoryAccentFromData(categoryName) {
+      const stored = categoryColorByName.get(categoryName);
+      if (stored && stored.trim()) return stored.trim();
+      return categoryAccent(categoryName);
+    }
+
+    function pushToast(message, type = "info") {
+      const id = Date.now() + Math.random();
+      setToasts(prev => [...prev, { id, message, type }]);
+      window.setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, 2400);
+    }
+
     useEffect(() => {
       if (!loggedIn) return;
       loadPapers();
+      loadCategories();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loggedIn]);
+
+    async function loadCategories() {
+      try {
+        const data = await apiJson("/api/categories", { method: "GET" });
+        if (Array.isArray(data)) {
+          const normalized = data
+            .filter(x => x && x.id != null && x.name)
+            .map(x => ({ id: x.id, name: x.name, theme_color: x.theme_color || "" }));
+          setCategoryList(normalized.length > 0 ? normalized : DEFAULT_CATEGORY_LIST.map((n, idx) => ({ id: -(idx + 1), name: n, theme_color: "" })));
+          // 若当前筛选分类不存在于新列表，自动切回“全部”
+          setCategory(prev => (normalized.some(c => c.name === prev) ? prev : "全部"));
+        }
+      } catch (_) {
+        // 分类加载失败不影响其它功能
+      }
+    }
+
+    async function handleAddCategory() {
+      const name = (newCategoryName || "").trim();
+      if (!name) {
+        pushToast("请输入分类名称", "error");
+        return;
+      }
+
+      setAddingCategory(true);
+      setError("");
+      try {
+        await apiJson("/api/categories", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, theme_color: newCategoryColor }),
+        });
+        setNewCategoryName("");
+        setNewCategoryColor("#2f6fed");
+        setAddCategoryModalOpen(false);
+        await loadCategories();
+        pushToast("添加分类成功：" + name, "success");
+      } catch (e) {
+        pushToast("添加分类失败：" + e.message, "error");
+        setError(e.message);
+      } finally {
+        setAddingCategory(false);
+      }
+    }
+
+    function openEditCategory(cat) {
+      if (!cat) return;
+      setEditCategoryId(cat.id);
+      setEditCategoryName(cat.name || "");
+      setEditCategoryColor((cat.theme_color && cat.theme_color.trim()) ? cat.theme_color.trim() : categoryAccent(cat.name || ""));
+      setEditCategoryModalOpen(true);
+      setError("");
+    }
+
+    async function handleUpdateCategory() {
+      const id = editCategoryId;
+      const name = (editCategoryName || "").trim();
+      if (id == null) {
+        pushToast("缺少分类 ID，无法编辑", "error");
+        return;
+      }
+      if (!name) {
+        pushToast("请输入分类名称", "error");
+        return;
+      }
+
+      setUpdatingCategory(true);
+      setError("");
+      try {
+        await apiJson(`/api/categories/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, theme_color: editCategoryColor }),
+        });
+        setEditCategoryModalOpen(false);
+        pushToast("分类已更新", "success");
+        await loadCategories();
+        await loadPapers();
+      } catch (e) {
+        pushToast("更新分类失败：" + e.message, "error");
+        setError(e.message);
+      } finally {
+        setUpdatingCategory(false);
+      }
+    }
+
+    async function handleDeleteCategory(cat) {
+      if (!cat || cat.id == null) return;
+      if (cat.id < 0) {
+        pushToast("默认分类不可删除", "error");
+        return;
+      }
+      if (!confirm(`确认删除分类「${cat.name}」？`)) return;
+
+      setError("");
+      try {
+        await apiJson(`/api/categories/${cat.id}`, { method: "DELETE" });
+        pushToast("分类删除成功", "success");
+        await loadCategories();
+        await loadPapers();
+      } catch (e) {
+        pushToast(e.message || "删除失败", "error");
+        setError(e.message);
+      }
+    }
 
     async function loadPapers() {
       setBusy(true);
@@ -243,8 +593,10 @@
         });
         saveLastUsername(loginForm.username);
         setLoggedIn(true);
+        pushToast("登录成功，欢迎回来！", "success");
       } catch (e) {
         setError(e.message);
+        pushToast("登录失败：" + e.message, "error");
       } finally {
         setBusy(false);
       }
@@ -253,6 +605,7 @@
     async function handleUpload() {
       if (!file) {
         setError("请选择 PDF 文件");
+        pushToast("请先选择一个 PDF 文件", "error");
         return;
       }
       setBusy(true);
@@ -273,8 +626,16 @@
         setUploadModalOpen(false);
         setUploadCodeUrl("");
         setFile(null);
+        pushToast("论文上传成功，已完成自动分类", "success");
       } catch (e) {
-        setError(e.message);
+        const msg = e.message || "";
+        if (msg.includes("API Key")) {
+          setError("上传失败：请先完善 LLM APIKey（application.yml 的 app.llm.api-key）");
+          pushToast("请先完善 LLM APIKey 后再上传", "error");
+        } else {
+          setError(e.message);
+          pushToast("上传失败：" + e.message, "error");
+        }
       } finally {
         setBusy(false);
       }
@@ -287,8 +648,10 @@
       try {
         await apiJson("/api/papers/" + paperId, { method: "DELETE" });
         await loadPapers();
+        pushToast("删除成功", "success");
       } catch (e) {
         setError(e.message);
+        pushToast("删除失败：" + e.message, "error");
       } finally {
         setBusy(false);
       }
@@ -318,8 +681,10 @@
         });
         setEditPaper(null);
         await loadPapers();
+        pushToast("保存成功", "success");
       } catch (e) {
         setError(e.message);
+        pushToast("保存失败：" + e.message, "error");
       } finally {
         setBusy(false);
       }
@@ -327,11 +692,12 @@
 
     const grouped = useMemo(() => {
       const map = new Map();
-      CATEGORY_LIST.forEach(c => map.set(c, []));
+      categoryList.forEach(c => map.set(c.name, []));
       for (const p of papers) {
         const cats = p.categories || [];
         for (const c of cats) {
-          if (map.has(c)) map.get(c).push(p);
+          if (!map.has(c)) map.set(c, []);
+          map.get(c).push(p);
         }
       }
       // 稍微去重：同一 paper 在组内不需要重复同分类
@@ -348,11 +714,16 @@
         map.set(k, next);
       }
       return map;
-    }, [papers]);
+    }, [papers, categoryList]);
 
     if (!loggedIn) {
       return (
         <div className="login-wrap">
+          <div className="toast-wrap">
+            {toasts.map(t => (
+              <div key={t.id} className={`toast ${t.type}`}>{t.message}</div>
+            ))}
+          </div>
           <div className="login-card">
             <div className="brand">
               <div className="brand-dot">PDF</div>
@@ -410,66 +781,112 @@
     }
 
     return (
-      <div>
+      <div className="dashboard-wrap">
+        <div className="toast-wrap">
+          {toasts.map(t => (
+            <div key={t.id} className={`toast ${t.type}`}>{t.message}</div>
+          ))}
+        </div>
         <div className="card">
           <div className="row" style={{ justifyContent: "space-between" }}>
             <div>
               <h2 style={{ margin: 0 }}>论文管理</h2>
               <div className="muted">上传 PDF 会自动抽取 Abstract/Introduction 并进行多标签分类</div>
             </div>
-            <button onClick={() => { setLoggedIn(false); setPapers([]); }} disabled={busy}>退出</button>
+            <button className="toolbar-btn btn-logout" onClick={() => { setLoggedIn(false); setPapers([]); }} disabled={busy}>退出</button>
           </div>
 
           <div className="divider"></div>
 
-          <div className="row">
-            <button
-              className="primary"
-              onClick={() => {
-                setUploadCodeUrl("");
-                setFile(null);
-                setUploadModalOpen(true);
-                setError("");
-              }}
-              disabled={busy}
-            >
-              {busy ? "准备中..." : "上传论文"}
-            </button>
-          </div>
-
-          <div className="divider"></div>
-
-          <div className="row">
-            <div style={{ flex: 1, minWidth: 260 }}>
-              <div className="muted">搜索关键词（文件名）</div>
-              <input type="text" value={keyword} onChange={(e)=>setKeyword(e.target.value)} placeholder="例如：GNN" />
+          <div className="row" style={{ justifyContent: "space-between" }}>
+            <div className="row">
+              <button
+                className="primary btn-upload toolbar-btn"
+                onClick={() => {
+                  setUploadCodeUrl("");
+                  setFile(null);
+                  setUploadModalOpen(true);
+                  setError("");
+                }}
+                disabled={busy}
+              >
+                {busy ? "准备中..." : "上传论文"}
+              </button>
+              <button
+                className="primary btn-addcat toolbar-btn"
+                onClick={() => {
+                  setNewCategoryName("");
+                  setNewCategoryColor("#2f6fed");
+                  setAddCategoryModalOpen(true);
+                  setError("");
+                }}
+                disabled={busy}
+              >
+                添加分类
+              </button>
             </div>
-            <div style={{ width: 240 }}>
+          </div>
+
+          <div className="divider"></div>
+
+          <div className="search-strip">
+            <div className="toolbar-block" style={{ flex: 1, minWidth: 280 }}>
+              <div className="muted">搜索关键词（文件名）</div>
+              <input
+                className="toolbar-control"
+                type="text"
+                value={keyword}
+                onChange={(e)=>setKeyword(e.target.value)}
+                placeholder="例如：GNN"
+              />
+            </div>
+            <div className="toolbar-block" style={{ width: 260 }}>
               <div className="muted">按分类过滤</div>
-              <select value={category} onChange={(e)=>setCategory(e.target.value)}>
+              <select className="toolbar-control" value={category} onChange={(e)=>setCategory(e.target.value)}>
                 <option value="全部">全部</option>
-                {CATEGORY_LIST.map(c => <option key={c} value={c}>{c}</option>)}
+                {categoryList.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
               </select>
             </div>
-            <button onClick={loadPapers} disabled={busy}>搜索</button>
+            <div className="search-btn-wrap">
+              <button className="toolbar-btn btn-search" onClick={loadPapers} disabled={busy}>搜索</button>
+            </div>
           </div>
         </div>
 
         <div className="groups">
-          {CATEGORY_LIST.map(c => (
-            <div key={c} className="card" style={{ marginBottom: 0 }}>
-              <div className="group-title">{c}</div>
-              {(grouped.get(c) || []).length === 0 ? (
+          {categoryList.map(c => (
+            <div
+              key={c.id ?? c.name}
+              className="card category-card"
+              style={{ marginBottom: 0, ["--accent"]: categoryAccentFromData(c.name) }}
+            >
+              <div className="category-head">
+                <div className="group-title">{c.name}</div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn-mini" onClick={() => openEditCategory(c)} disabled={busy}>
+                    编辑
+                  </button>
+                  <button
+                    className="btn-mini btn-mini-danger"
+                    onClick={() => handleDeleteCategory(c)}
+                    disabled={busy || (c.id != null && c.id < 0)}
+                    title={(c.id != null && c.id < 0) ? "默认分类不可删除" : "删除分类"}
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+              {(grouped.get(c.name) || []).length === 0 ? (
                 <div className="muted">暂无论文</div>
               ) : null}
-              {(grouped.get(c) || []).length > 0 ? (
+              {(grouped.get(c.name) || []).length > 0 ? (
                 <div className="paper-header">
                   <div>PDF 文件</div>
                   <div>Code URL</div>
                   <div>操作</div>
                 </div>
               ) : null}
-              {(grouped.get(c) || []).map(p => (
+              {(grouped.get(c.name) || []).map(p => (
                 <div key={p.id} className="paper-line">
                   <div className="paper-meta">
                     <a href={p.file_url || p.fileUrl} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
@@ -505,19 +922,19 @@
               <div className="divider"></div>
               <div className="muted" style={{ marginBottom: 6 }}>分类（多选）</div>
               <div className="checkboxes">
-                {CATEGORY_LIST.map(c => (
-                  <label key={c}>
+                {categoryList.map(c => (
+                  <label key={c.name}>
                     <input
                       type="checkbox"
-                      checked={(editForm.categories || []).includes(c)}
+                      checked={(editForm.categories || []).includes(c.name)}
                       onChange={(e) => {
                         const checked = e.target.checked;
                         let next = new Set(editForm.categories || []);
-                        if (checked) next.add(c); else next.delete(c);
+                        if (checked) next.add(c.name); else next.delete(c.name);
                         setEditForm({ ...editForm, categories: Array.from(next) });
                       }}
                     />
-                    <span>{c}</span>
+                    <span>{c.name}</span>
                   </label>
                 ))}
               </div>
@@ -536,6 +953,149 @@
               <div className="row" style={{ justifyContent: "flex-end" }}>
                 <button onClick={() => setEditPaper(null)} disabled={busy}>取消</button>
                 <button className="primary" onClick={handleSaveEdit} disabled={busy}>保存</button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {addCategoryModalOpen ? (
+          <div
+            className="modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setAddCategoryModalOpen(false);
+            }}
+          >
+            <div className="modal">
+              <h3>添加分类</h3>
+              <div className="muted">填写分类名称，并为该分类选择主题色</div>
+              <div className="divider"></div>
+
+              <div className="muted" style={{ marginBottom: 6 }}>分类名称</div>
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                style={{ width: "100%" }}
+                placeholder="例如：Reinforcement Learning Based"
+              />
+
+              <div className="divider"></div>
+              <div className="muted" style={{ marginBottom: 6 }}>主题色</div>
+              <div className="row">
+                <input
+                  type="color"
+                  value={newCategoryColor}
+                  onChange={(e) => setNewCategoryColor(e.target.value)}
+                  style={{ width: 56, height: 42, padding: 0, border: "1px solid #d0d5dd", borderRadius: 10 }}
+                />
+                <input
+                  type="text"
+                  value={newCategoryColor}
+                  onChange={(e) => setNewCategoryColor(e.target.value)}
+                  style={{ flex: 1, minWidth: 200 }}
+                  placeholder="#2f6fed"
+                />
+                <div
+                  title="预览"
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,.08)",
+                    background: newCategoryColor,
+                  }}
+                />
+              </div>
+
+              {error ? (
+                <div style={{ marginTop: 12, color: "#dc3545", fontSize: 13 }}>{error}</div>
+              ) : null}
+
+              <div className="divider"></div>
+              <div className="row" style={{ justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => {
+                    setAddCategoryModalOpen(false);
+                    setError("");
+                  }}
+                  disabled={busy || addingCategory}
+                >
+                  取消
+                </button>
+                <button className="primary" onClick={handleAddCategory} disabled={busy || addingCategory}>
+                  {addingCategory ? "添加中..." : "确认添加"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {editCategoryModalOpen ? (
+          <div
+            className="modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setEditCategoryModalOpen(false);
+            }}
+          >
+            <div className="modal">
+              <h3>编辑分类</h3>
+              <div className="muted">修改分类名称与主题色</div>
+              <div className="divider"></div>
+
+              <div className="muted" style={{ marginBottom: 6 }}>分类名称</div>
+              <input
+                type="text"
+                value={editCategoryName}
+                onChange={(e) => setEditCategoryName(e.target.value)}
+                style={{ width: "100%" }}
+              />
+
+              <div className="divider"></div>
+              <div className="muted" style={{ marginBottom: 6 }}>主题色</div>
+              <div className="row">
+                <input
+                  type="color"
+                  value={editCategoryColor}
+                  onChange={(e) => setEditCategoryColor(e.target.value)}
+                  style={{ width: 56, height: 42, padding: 0, border: "1px solid #d0d5dd", borderRadius: 10 }}
+                />
+                <input
+                  type="text"
+                  value={editCategoryColor}
+                  onChange={(e) => setEditCategoryColor(e.target.value)}
+                  style={{ flex: 1, minWidth: 200 }}
+                  placeholder="#2f6fed"
+                />
+                <div
+                  title="预览"
+                  style={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,.08)",
+                    background: editCategoryColor,
+                  }}
+                />
+              </div>
+
+              {error ? (
+                <div style={{ marginTop: 12, color: "#dc3545", fontSize: 13 }}>{error}</div>
+              ) : null}
+
+              <div className="divider"></div>
+              <div className="row" style={{ justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => {
+                    setEditCategoryModalOpen(false);
+                    setError("");
+                  }}
+                  disabled={busy || updatingCategory}
+                >
+                  取消
+                </button>
+                <button className="primary" onClick={handleUpdateCategory} disabled={busy || updatingCategory}>
+                  {updatingCategory ? "保存中..." : "保存修改"}
+                </button>
               </div>
             </div>
           </div>

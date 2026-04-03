@@ -14,6 +14,12 @@ public class Category {
 
     private String name;
 
+    /**
+     * 分类主题色（hex），例如：#2f6fed
+     */
+    @Column(name = "theme_color", length = 16)
+    private String themeColor;
+
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PaperCategory> paperCategories = new HashSet<>();
 
@@ -31,6 +37,14 @@ public class Category {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getThemeColor() {
+        return themeColor;
+    }
+
+    public void setThemeColor(String themeColor) {
+        this.themeColor = themeColor;
     }
 
     public Set<PaperCategory> getPaperCategories() {
