@@ -66,6 +66,12 @@
       color: #fff !important;
     }
     .btn-addcat:hover { filter: saturate(1.05); }
+    .btn-direction {
+      background: linear-gradient(135deg, #f59e0b, #f97316) !important;
+      border-color: transparent !important;
+      color: #fff !important;
+    }
+    .btn-direction:hover { filter: saturate(1.05); }
     .toolbar-btn {
       height: 42px;
       min-width: 108px;
@@ -405,6 +411,9 @@
     const [file, setFile] = useState(null);
     const [uploadCodeUrl, setUploadCodeUrl] = useState("");
     const [uploadModalOpen, setUploadModalOpen] = useState(false);
+    const [researchDirection, setResearchDirection] = useState("");
+    const [researchDirectionModalOpen, setResearchDirectionModalOpen] = useState(false);
+    const [savingResearchDirection, setSavingResearchDirection] = useState(false);
 
     const [editPaper, setEditPaper] = useState(null); // paper object
     const [editForm, setEditForm] = useState({ categories: [], code_url: "" });
@@ -460,6 +469,7 @@
       if (!loggedIn) return;
       loadPapers();
       loadCategories();
+      loadResearchDirection();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [loggedIn]);
 
@@ -476,6 +486,35 @@
         }
       } catch (_) {
         // 分类加载失败不影响其它功能
+      }
+    }
+
+    async function loadResearchDirection() {
+      try {
+        const data = await apiJson("/api/settings/research-direction", { method: "GET" });
+        setResearchDirection((data && (data.research_direction || data.researchDirection)) || "");
+      } catch (_) {
+        // 设置项加载失败不影响主要功能
+      }
+    }
+
+    async function handleSaveResearchDirection() {
+      setSavingResearchDirection(true);
+      setError("");
+      try {
+        const payload = { research_direction: (researchDirection || "").trim() };
+        await apiJson("/api/settings/research-direction", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        setResearchDirectionModalOpen(false);
+        pushToast("研究方向已保存，后续上传会用于 LLM 分类", "success");
+      } catch (e) {
+        setError(e.message || "保存研究方向失败");
+        pushToast("保存研究方向失败：" + (e.message || "未知错误"), "error");
+      } finally {
+        setSavingResearchDirection(false);
       }
     }
 
@@ -829,6 +868,16 @@
               >
                 添加分类
               </button>
+              <button
+                className="primary btn-direction toolbar-btn"
+                onClick={() => {
+                  setResearchDirectionModalOpen(true);
+                  setError("");
+                }}
+                disabled={busy}
+              >
+                设置研究方向
+              </button>
             </div>
           </div>
 
@@ -1172,6 +1221,49 @@
                 </button>
                 <button className="primary" onClick={handleUpload} disabled={busy || !file}>
                   {busy ? "上传中..." : "确认上传"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {researchDirectionModalOpen ? (
+          <div
+            className="modal-backdrop"
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setResearchDirectionModalOpen(false);
+            }}
+          >
+            <div className="modal">
+              <h3>设置研究方向</h3>
+              <div className="muted">该内容会拼接进 LLM 提示词，辅助论文分类更贴合你的场景</div>
+              <div className="divider"></div>
+
+              <div className="muted" style={{ marginBottom: 6 }}>研究方向（可留空）</div>
+              <textarea
+                value={researchDirection}
+                onChange={(e) => setResearchDirection(e.target.value)}
+                style={{ width: "100%", minHeight: 110, resize: "vertical", borderRadius: 10, border: "1px solid #d0d5dd", padding: 10, fontFamily: "inherit" }}
+                placeholder="例如：关注工业推荐系统中的多模态召回、冷启动与实时排序优化"
+              />
+
+              {error ? (
+                <div style={{ marginTop: 12, color: "#dc3545", fontSize: 13 }}>{error}</div>
+              ) : null}
+
+              <div className="divider"></div>
+              <div className="row" style={{ justifyContent: "flex-end" }}>
+                <button
+                  onClick={() => {
+                    setResearchDirectionModalOpen(false);
+                    setError("");
+                  }}
+                  disabled={busy || savingResearchDirection}
+                >
+                  取消
+                </button>
+                <button className="primary" onClick={handleSaveResearchDirection} disabled={busy || savingResearchDirection}>
+                  {savingResearchDirection ? "保存中..." : "保存设置"}
                 </button>
               </div>
             </div>

@@ -20,8 +20,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 
 import com.example.paper.exception.ApiException;
 
@@ -33,17 +31,20 @@ public class PaperService {
     private final FileService fileService;
     private final PdfParserUtil pdfParserUtil;
     private final LLMService llmService;
+    private final SettingService settingService;
 
     public PaperService(PaperRepository paperRepository,
                          CategoryRepository categoryRepository,
                          FileService fileService,
                          PdfParserUtil pdfParserUtil,
-                         LLMService llmService) {
+                         LLMService llmService,
+                         SettingService settingService) {
         this.paperRepository = paperRepository;
         this.categoryRepository = categoryRepository;
         this.fileService = fileService;
         this.pdfParserUtil = pdfParserUtil;
         this.llmService = llmService;
+        this.settingService = settingService;
     }
 
     @Transactional
@@ -60,8 +61,9 @@ public class PaperService {
         }
         java.util.Map<String, String> categoryDescriptions = categoryEntities.stream()
                 .collect(java.util.stream.Collectors.toMap(Category::getName, c -> c.getDescription() == null ? "" : c.getDescription(), (a, b) -> a));
+        String researchDirection = settingService.getResearchDirection();
 
-        List<String> categories = llmService.classify(text, candidateCategories, categoryDescriptions);
+        List<String> categories = llmService.classify(text, candidateCategories, categoryDescriptions, researchDirection);
         categories = normalizeCategories(categories);
         if (categories.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM 未返回有效分类，请检查模型配置与返回格式。");

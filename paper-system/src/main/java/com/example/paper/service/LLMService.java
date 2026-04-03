@@ -38,7 +38,7 @@ public class LLMService {
         this.appProperties = appProperties;
     }
 
-    public List<String> classify(String content, List<String> candidateCategories, java.util.Map<String, String> categoryDescriptions) {
+    public List<String> classify(String content, List<String> candidateCategories, java.util.Map<String, String> categoryDescriptions, String researchDirection) {
         if (content == null) {
             return Collections.emptyList();
         }
@@ -53,7 +53,7 @@ public class LLMService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "LLM API Key 未配置，请先在 application.yml 中完善 app.llm.api-key。");
         }
 
-        String prompt = buildPrompt(content, candidateCategories, categoryDescriptions);
+        String prompt = buildPrompt(content, candidateCategories, categoryDescriptions, researchDirection);
         try {
             String responseBody = callDashScope(prompt, apiKey, endpoint);
             List<String> parsed = parseCategories(responseBody, candidateCategories);
@@ -126,8 +126,11 @@ public class LLMService {
         return response.body();
     }
 
-    private String buildPrompt(String content, List<String> candidateCategories, java.util.Map<String, String> categoryDescriptions) {
+    private String buildPrompt(String content, List<String> candidateCategories, java.util.Map<String, String> categoryDescriptions, String researchDirection) {
         StringBuilder sb = new StringBuilder();
+        if (researchDirection != null && !researchDirection.trim().isEmpty()) {
+            sb.append("研究方向上下文：").append(researchDirection.trim()).append("\n\n");
+        }
         sb.append("你是推荐系统领域专家，请根据论文内容判断其属于以下哪些类别（可以多选）：\n");
         for (int i = 0; i < candidateCategories.size(); i++) {
             String name = candidateCategories.get(i);
