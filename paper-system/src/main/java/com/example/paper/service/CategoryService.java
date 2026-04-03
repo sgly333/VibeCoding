@@ -31,7 +31,7 @@ public class CategoryService {
         return categoryRepository.findAll().stream()
                 .sorted(Comparator.comparing(Category::getId, Comparator.nullsLast(Integer::compareTo)))
                 .filter(c -> c.getName() != null && !c.getName().trim().isEmpty())
-                .map(c -> new CategoryDTO(c.getId(), c.getName(), c.getThemeColor()))
+                .map(c -> new CategoryDTO(c.getId(), c.getName(), c.getThemeColor(), c.getDescription()))
                 .collect(Collectors.toList());
     }
 
@@ -47,12 +47,14 @@ public class CategoryService {
         }
 
         String themeColor = normalizeHexColor(req.getThemeColor());
+        String description = normalizeDescription(req.getDescription());
 
         Category c = new Category();
         c.setName(name);
         c.setThemeColor(themeColor);
+        c.setDescription(description);
         categoryRepository.save(c);
-        return new CategoryDTO(c.getId(), c.getName(), c.getThemeColor());
+        return new CategoryDTO(c.getId(), c.getName(), c.getThemeColor(), c.getDescription());
     }
 
     @Transactional
@@ -74,11 +76,13 @@ public class CategoryService {
         }
 
         String themeColor = normalizeHexColor(req.getThemeColor());
+        String description = normalizeDescription(req.getDescription());
         category.setName(newName);
         category.setThemeColor(themeColor);
+        category.setDescription(description);
 
         Category saved = categoryRepository.save(category);
-        return new CategoryDTO(saved.getId(), saved.getName(), saved.getThemeColor());
+        return new CategoryDTO(saved.getId(), saved.getName(), saved.getThemeColor(), saved.getDescription());
     }
 
     @Transactional
@@ -105,6 +109,16 @@ public class CategoryService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "invalid themeColor, expected hex like #2f6fed");
         }
         return s.toLowerCase();
+    }
+
+    private String normalizeDescription(String raw) {
+        if (raw == null) return null;
+        String s = raw.trim();
+        if (s.isEmpty()) return null;
+        if (s.length() > 1000) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "description too long, max 1000 chars");
+        }
+        return s;
     }
 }
 

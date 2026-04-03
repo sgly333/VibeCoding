@@ -51,15 +51,17 @@ public class PaperService {
         String title = deriveTitle(file.getOriginalFilename());
         byte[] pdfBytes = file.getBytes();
         String text = pdfParserUtil.extractAbstractAndIntroduction(pdfBytes);
-        List<String> candidateCategories = categoryRepository.findAll().stream()
-                .map(Category::getName)
-                .filter(n -> n != null && !n.trim().isEmpty())
+        List<Category> categoryEntities = categoryRepository.findAll().stream()
+                .filter(c -> c.getName() != null && !c.getName().trim().isEmpty())
                 .toList();
+        List<String> candidateCategories = categoryEntities.stream().map(Category::getName).toList();
         if (candidateCategories.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "当前没有可用分类，请先添加分类后再上传论文。");
         }
+        java.util.Map<String, String> categoryDescriptions = categoryEntities.stream()
+                .collect(java.util.stream.Collectors.toMap(Category::getName, c -> c.getDescription() == null ? "" : c.getDescription(), (a, b) -> a));
 
-        List<String> categories = llmService.classify(text, candidateCategories);
+        List<String> categories = llmService.classify(text, candidateCategories, categoryDescriptions);
         categories = normalizeCategories(categories);
         if (categories.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_GATEWAY, "LLM 未返回有效分类，请检查模型配置与返回格式。");

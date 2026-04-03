@@ -387,17 +387,19 @@
     const [papers, setPapers] = useState([]);
     const [keyword, setKeyword] = useState("");
     const [category, setCategory] = useState("全部");
-    const [categoryList, setCategoryList] = useState(DEFAULT_CATEGORY_LIST.map((n, idx) => ({ id: -(idx + 1), name: n, theme_color: "" })));
+    const [categoryList, setCategoryList] = useState(DEFAULT_CATEGORY_LIST.map((n, idx) => ({ id: -(idx + 1), name: n, theme_color: "", description: "" })));
 
     const [addCategoryModalOpen, setAddCategoryModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [newCategoryColor, setNewCategoryColor] = useState("#2f6fed");
+    const [newCategoryDescription, setNewCategoryDescription] = useState("");
     const [addingCategory, setAddingCategory] = useState(false);
 
     const [editCategoryModalOpen, setEditCategoryModalOpen] = useState(false);
     const [editCategoryId, setEditCategoryId] = useState(null);
     const [editCategoryName, setEditCategoryName] = useState("");
     const [editCategoryColor, setEditCategoryColor] = useState("#2f6fed");
+    const [editCategoryDescription, setEditCategoryDescription] = useState("");
     const [updatingCategory, setUpdatingCategory] = useState(false);
 
     const [file, setFile] = useState(null);
@@ -467,8 +469,8 @@
         if (Array.isArray(data)) {
           const normalized = data
             .filter(x => x && x.id != null && x.name)
-            .map(x => ({ id: x.id, name: x.name, theme_color: x.theme_color || "" }));
-          setCategoryList(normalized.length > 0 ? normalized : DEFAULT_CATEGORY_LIST.map((n, idx) => ({ id: -(idx + 1), name: n, theme_color: "" })));
+            .map(x => ({ id: x.id, name: x.name, theme_color: x.theme_color || "", description: x.description || "" }));
+          setCategoryList(normalized.length > 0 ? normalized : DEFAULT_CATEGORY_LIST.map((n, idx) => ({ id: -(idx + 1), name: n, theme_color: "", description: "" })));
           // 若当前筛选分类不存在于新列表，自动切回“全部”
           setCategory(prev => (normalized.some(c => c.name === prev) ? prev : "全部"));
         }
@@ -490,10 +492,11 @@
         await apiJson("/api/categories", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, theme_color: newCategoryColor }),
+          body: JSON.stringify({ name, theme_color: newCategoryColor, description: (newCategoryDescription || "").trim() }),
         });
         setNewCategoryName("");
         setNewCategoryColor("#2f6fed");
+        setNewCategoryDescription("");
         setAddCategoryModalOpen(false);
         await loadCategories();
         pushToast("添加分类成功：" + name, "success");
@@ -510,6 +513,7 @@
       setEditCategoryId(cat.id);
       setEditCategoryName(cat.name || "");
       setEditCategoryColor((cat.theme_color && cat.theme_color.trim()) ? cat.theme_color.trim() : categoryAccent(cat.name || ""));
+      setEditCategoryDescription(cat.description || "");
       setEditCategoryModalOpen(true);
       setError("");
     }
@@ -532,7 +536,7 @@
         await apiJson(`/api/categories/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, theme_color: editCategoryColor }),
+          body: JSON.stringify({ name, theme_color: editCategoryColor, description: (editCategoryDescription || "").trim() }),
         });
         setEditCategoryModalOpen(false);
         pushToast("分类已更新", "success");
@@ -817,6 +821,7 @@
                 onClick={() => {
                   setNewCategoryName("");
                   setNewCategoryColor("#2f6fed");
+                  setNewCategoryDescription("");
                   setAddCategoryModalOpen(true);
                   setError("");
                 }}
@@ -980,6 +985,16 @@
               />
 
               <div className="divider"></div>
+              <div className="muted" style={{ marginBottom: 6 }}>分类描述（供 LLM 参考）</div>
+              <input
+                type="text"
+                value={newCategoryDescription}
+                onChange={(e) => setNewCategoryDescription(e.target.value)}
+                style={{ width: "100%" }}
+                placeholder="例如：强调奖励函数、策略优化、环境交互的推荐方法"
+              />
+
+              <div className="divider"></div>
               <div className="muted" style={{ marginBottom: 6 }}>主题色</div>
               <div className="row">
                 <input
@@ -1047,6 +1062,15 @@
                 type="text"
                 value={editCategoryName}
                 onChange={(e) => setEditCategoryName(e.target.value)}
+                style={{ width: "100%" }}
+              />
+
+              <div className="divider"></div>
+              <div className="muted" style={{ marginBottom: 6 }}>分类描述（供 LLM 参考）</div>
+              <input
+                type="text"
+                value={editCategoryDescription}
+                onChange={(e) => setEditCategoryDescription(e.target.value)}
                 style={{ width: "100%" }}
               />
 

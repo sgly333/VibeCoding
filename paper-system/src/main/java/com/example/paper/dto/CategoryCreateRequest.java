@@ -12,6 +12,11 @@ public class CategoryCreateRequest {
      */
     private String themeColor;
 
+    /**
+     * 分类描述（可选）
+     */
+    private String description;
+
     public String getName() {
         return name;
     }
@@ -26,6 +31,14 @@ public class CategoryCreateRequest {
 
     public void setThemeColor(String themeColor) {
         this.themeColor = themeColor;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
 

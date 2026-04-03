@@ -4,14 +4,16 @@ public class CategoryDTO {
     private Integer id;
     private String name;
     private String themeColor;
+    private String description;
 
     public CategoryDTO() {
     }
 
-    public CategoryDTO(Integer id, String name, String themeColor) {
+    public CategoryDTO(Integer id, String name, String themeColor, String description) {
         this.id = id;
         this.name = name;
         this.themeColor = themeColor;
+        this.description = description;
     }
 
     public Integer getId() {
@@ -36,6 +38,14 @@ public class CategoryDTO {
 
     public void setThemeColor(String themeColor) {
         this.themeColor = themeColor;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 }
 

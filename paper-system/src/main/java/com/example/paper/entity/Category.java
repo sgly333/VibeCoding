@@ -20,6 +20,12 @@ public class Category {
     @Column(name = "theme_color", length = 16)
     private String themeColor;
 
+    /**
+     * 分类描述，供 LLM 分类时参考
+     */
+    @Column(name = "description", length = 1000)
+    private String description;
+
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<PaperCategory> paperCategories = new HashSet<>();
 
@@ -45,6 +51,14 @@ public class Category {
 
     public void setThemeColor(String themeColor) {
         this.themeColor = themeColor;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public Set<PaperCategory> getPaperCategories() {

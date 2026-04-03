@@ -38,7 +38,7 @@ public class LLMService {
         this.appProperties = appProperties;
     }
 
-    public List<String> classify(String content, List<String> candidateCategories) {
+    public List<String> classify(String content, List<String> candidateCategories, java.util.Map<String, String> categoryDescriptions) {
         if (content == null) {
             return Collections.emptyList();
         }
@@ -53,7 +53,7 @@ public class LLMService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "LLM API Key 未配置，请先在 application.yml 中完善 app.llm.api-key。");
         }
 
-        String prompt = buildPrompt(content, candidateCategories);
+        String prompt = buildPrompt(content, candidateCategories, categoryDescriptions);
         try {
             String responseBody = callDashScope(prompt, apiKey, endpoint);
             List<String> parsed = parseCategories(responseBody, candidateCategories);
@@ -126,11 +126,17 @@ public class LLMService {
         return response.body();
     }
 
-    private String buildPrompt(String content, List<String> candidateCategories) {
+    private String buildPrompt(String content, List<String> candidateCategories, java.util.Map<String, String> categoryDescriptions) {
         StringBuilder sb = new StringBuilder();
         sb.append("你是推荐系统领域专家，请根据论文内容判断其属于以下哪些类别（可以多选）：\n");
         for (int i = 0; i < candidateCategories.size(); i++) {
-            sb.append(i + 1).append(". ").append(candidateCategories.get(i)).append("\n");
+            String name = candidateCategories.get(i);
+            String desc = categoryDescriptions == null ? "" : categoryDescriptions.getOrDefault(name, "");
+            sb.append(i + 1).append(". ").append(name);
+            if (desc != null && !desc.trim().isEmpty()) {
+                sb.append("（描述：").append(desc.trim()).append("）");
+            }
+            sb.append("\n");
         }
         sb.append("\n返回格式（只能返回 JSON 数组，不要添加解释）：\n");
         sb.append("[\"").append(candidateCategories.get(0)).append("\"]\n\n");
