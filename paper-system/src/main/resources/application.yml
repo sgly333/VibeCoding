@@ -11,17 +11,21 @@ spring:
       max-file-size: 50MB
       max-request-size: 50MB
   datasource:
-    # 需要你在本机安装 MySQL 并创建库：paper_system
-    url: jdbc:mysql://localhost:3306/paper_system?useSSL=false&serverTimezone=UTC
+    # 需要你在本机安装 MySQL 并创建库：paper_system，并确保服务已启动
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/paper_system?useSSL=false&serverTimezone=UTC&characterEncoding=utf8
     username: root
     password: 123456
   jpa:
+    # 显式指定方言：避免连接阶段尚未拿到 JDBC 元数据时出现 “Unable to determine Dialect”
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: update
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
   sql:
     init:
       mode: never
